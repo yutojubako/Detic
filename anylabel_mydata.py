@@ -113,6 +113,45 @@ def test_opencv_video_format(codec, file_ext):
             return True
         return False
 
+def get_image_files(image_dir):
+    image_files = glob.glob(os.path.join(image_dir, '**', '*.png'), recursive=True)
+    image_files += glob.glob(os.path.join(image_dir, '**', '*.jpg'), recursive=True)
+    return image_files
+
+def save_results(predictions, class_names, img, image_file, image_dir, output_dir, start_dir):
+    result = {
+        "version": "0.3.3",
+        "flags": {},
+        "shapes": [],
+        "imagePath": ".." + os.path.relpath(image_file, start_dir).replace(image_dir, '', 1),
+        "imageData": None,
+        "imageHeight": img.shape[0],
+        "imageWidth": img.shape[1],
+        "text": ""
+    }
+
+    for i in range(len(predictions["instances"])):
+        bbox = predictions["instances"].pred_boxes.tensor[i].tolist()
+        label = class_names[predictions["instances"].pred_classes[i].item()]
+        all_labels_set.add(label)
+        shape = {
+            "label": label,
+            "text": "",
+            "points": [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
+            "group_id": None,
+            "shape_type": "rectangle",
+            "flags": {}
+        }
+        result["shapes"].append(shape)
+
+    output_file = os.path.join(output_dir, os.path.splitext(os.path.basename(image_file))[0] + '.json')
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    with open(output_file, 'w') as f:
+        json.dump(result, f, indent=4)
+
+def save_visualized_output(visualized_output, image_file, output_dir):
+    output_image_path = os.path.join(output_dir, os.path.basename(image_file))
+    cv2.imwrite(output_image_path, visualized_output.get_image()[:, :, ::-1])
 
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)
@@ -123,6 +162,8 @@ if __name__ == "__main__":
 
     cfg = setup_cfg(args)
 
+    image_dir = '2_20231114'
+
     # VisualizationDemoクラスのインスタンスを作成
     demo = VisualizationDemo(cfg, args)
 
@@ -131,45 +172,23 @@ if __name__ == "__main__":
     class_names = metadata.thing_classes
 
     # 推論を実行し、結果を保存
-    output_dir = '1_20231030/annotations_detic'
+    output_dir = os.path.join(image_dir, 'annotations')
     os.makedirs(output_dir, exist_ok=True)
+
+    output_image_dir = os.path.join(image_dir, 'images_detic')
+    os.makedirs(output_image_dir, exist_ok=True)
 
     all_labels_set = set()
     start_dir = os.getcwd()
+
+    os.makedirs(output_dir, exist_ok=True)
+    image_files = get_image_files(image_dir)
+
     for image_file in tqdm(image_files):
         img = read_image(image_file, format="BGR")
         predictions, visualized_output = demo.run_on_image(img)
-
-        # 結果を指定された形式で保存
-        result = {
-            "version": "0.3.3",
-            "flags": {},
-            "shapes": [],
-            "imagePath": os.path.relpath(image_file, start_dir),
-            "imageData": None,
-            "imageHeight": img.shape[0],
-            "imageWidth": img.shape[1],
-            "text": ""
-        }
-
-        for i in range(len(predictions["instances"])):
-            bbox = predictions["instances"].pred_boxes.tensor[i].tolist()
-            label = class_names[predictions["instances"].pred_classes[i].item()]
-            all_labels_set.add(label)
-            shape = {
-                "label": label,
-                "text": "",
-                "points": [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
-                "group_id": None,
-                "shape_type": "rectangle",
-                "flags": {}
-            }
-            result["shapes"].append(shape)
-
-        output_file = os.path.join(output_dir, os.path.splitext(os.path.basename(image_file))[0] + '.json')
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        with open(output_file, 'w') as f:
-            json.dump(result, f, indent=4)
+        save_results(predictions, class_names, img, image_file, image_dir, output_dir, start_dir)
+        save_visualized_output(visualized_output, image_file, output_image_dir)
 
 # 最後に、すべてのラベルを表示
-print(all_labels_set)
+print(list(all_labels_set))
