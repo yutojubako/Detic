@@ -22,12 +22,6 @@ from detic.config import add_detic_config
 
 from detic.predictor import VisualizationDemo
 
-# ディレクトリ内のすべての画像に対して推論を実行
-
-
-image_dir = '1_20231030'
-image_files = glob.glob(os.path.join(image_dir, '**', '*.png'), recursive=True)
-image_files += glob.glob(os.path.join(image_dir, '**', '*.jpg'), recursive=True)
 
 def setup_cfg(args):
     cfg = get_cfg()
