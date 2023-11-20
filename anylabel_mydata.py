@@ -118,7 +118,7 @@ def get_image_files(image_dir):
     image_files += glob.glob(os.path.join(image_dir, '**', '*.jpg'), recursive=True)
     return image_files
 
-def save_results(predictions, class_names, img, image_file, image_dir, output_dir, start_dir):
+def save_results(predictions, class_names, img, image_file, image_dir, output_dir, start_dir, id):
     result = {
         "version": "0.3.3",
         "flags": {},
@@ -140,7 +140,8 @@ def save_results(predictions, class_names, img, image_file, image_dir, output_di
             "points": [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
             "group_id": None,
             "shape_type": "rectangle",
-            "flags": {}
+            "flags": {},
+            "bbox_id": label + str(id)
         }
         result["shapes"].append(shape)
 
@@ -162,7 +163,7 @@ if __name__ == "__main__":
 
     cfg = setup_cfg(args)
 
-    image_dir = '2_20231114'
+    image_dir = '3_20231120'
 
     # VisualizationDemoクラスのインスタンスを作成
     demo = VisualizationDemo(cfg, args)
@@ -180,6 +181,7 @@ if __name__ == "__main__":
 
     all_labels_set = set()
     start_dir = os.getcwd()
+    id = 0
 
     os.makedirs(output_dir, exist_ok=True)
     image_files = get_image_files(image_dir)
@@ -187,8 +189,9 @@ if __name__ == "__main__":
     for image_file in tqdm(image_files):
         img = read_image(image_file, format="BGR")
         predictions, visualized_output = demo.run_on_image(img)
-        save_results(predictions, class_names, img, image_file, image_dir, output_dir, start_dir)
+        save_results(predictions, class_names, img, image_file, image_dir, output_dir, start_dir, id)
         save_visualized_output(visualized_output, image_file, output_image_dir)
+        id += 1
 
 # 最後に、すべてのラベルを表示
 print(list(all_labels_set))
